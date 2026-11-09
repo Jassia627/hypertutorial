@@ -87,6 +87,11 @@ export async function captureState(page, policy, secrets = []) {
     }
     // DOM values are decoded here. Scrubbing serialized markup misses entities
     // and can corrupt tag names when a credential happens to match HTML syntax.
+    // Comments have no visual role in an inert export and may contain secrets.
+    const comments = document.createTreeWalker(clone, NodeFilter.SHOW_COMMENT);
+    const discarded = [];
+    while (comments.nextNode()) discarded.push(comments.currentNode);
+    discarded.forEach(comment => comment.remove());
     const text = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
     while (text.nextNode()) text.currentNode.nodeValue = scrub(text.currentNode.nodeValue);
     for (const el of [clone, ...clone.querySelectorAll('*')]) {

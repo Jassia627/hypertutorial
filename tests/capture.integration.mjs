@@ -6,6 +6,20 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { captureState, inertDocument } from '../scripts/capture-state.mjs';
 
+test('inert exports omit comments that may contain known secrets', async () => {
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent('<main><!-- fixture-comment-secret --><p>safe</p><!-- harmless comment --></main>');
+    const data = await captureState(page, {}, ['fixture-comment-secret']);
+    assert.doesNotMatch(data.html, /fixture-comment-secret|harmless comment|<!--/);
+    const output = await browser.newPage();
+    await output.setContent(inertDocument(data));
+    assert.equal(await output.locator('main p').textContent(), 'safe');
+    assert.equal(await output.locator('main').evaluate(el => el.childNodes.length), 1);
+  } finally { await browser.close(); }
+});
+
 test('known secrets are redacted as decoded text and attributes without changing markup', async () => {
   const browser = await chromium.launch();
   try {

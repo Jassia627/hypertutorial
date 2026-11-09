@@ -208,6 +208,20 @@ The bounded source corrections and their deterministic regressions are complete.
 Next step: parent spot check plus fresh independent correction verification;
 then complete C4/P6 and synchronize the full Engram mirror. RDD remains off.
 
+Final bounded comment-only correction: fresh independent verification confirmed
+C1-C3 but found that DOM `SHOW_TEXT` redaction omitted comment nodes. The exact
+`<!-- fixture-comment-secret -->` regression failed before the fix. Export now
+removes comment nodes from the clone before serialization; visible elements and
+text are unchanged, and both sensitive and harmless comments are omitted.
+`node --test --test-name-pattern='omit comments' tests/capture.integration.mjs`
+observed RED. After correction, host-permission `npm.cmd test` passed 14/14 and
+`npm.cmd run test:integration` passed 6/6, with zero failures or skips.
+No new video render was needed for this nonvisual removal; the parent reports
+fresh independent visual/smoke qualification at `tests/artifacts/smoke-rUX4Fw`
+with the already documented warnings. Rollback scope: comment removal in
+`scripts/capture-state.mjs` and its exact capture integration regression.
+Independent recheck of this final correction remains pending; C4/P6 stay open.
+
 ## Documented platform and fidelity limitations
 
 - Native shadow DOM, canvas/media/embeds and compound root selectors are reported
