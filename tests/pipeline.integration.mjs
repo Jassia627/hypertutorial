@@ -4,6 +4,40 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fixture } from './fixture.mjs';
 
+test('repeated refused resumes preserve capture replay consent and failed-capture history', { timeout: 180000 }, async () => {
+  const f = await fixture('resume-consent');
+  const saveSpec = () => fs.writeFileSync(path.join(f.dir, 'hypertutorial.json'), JSON.stringify(f.spec));
+  const refuseTwice = async () => {
+    const count = f.requests.length;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.rejects(f.cli('run.mjs', ['--resume']), error => {
+        assert.match(error.output, /--refresh-capture/);
+        return true;
+      });
+      assert.equal(f.requests.length, count, 'refused resumes must never replay capture requests');
+      const manifest = JSON.parse(fs.readFileSync(path.join(f.dir, 'run-manifest.json')));
+      assert.ok(manifest.phases.capture, 'capture history must survive earlier phase saves');
+    }
+  };
+  try {
+    await f.cli('run.mjs');
+    f.spec.states[0].actions = [{ wait: 0 }]; saveSpec();
+    await refuseTwice();
+    const beforeRefresh = f.requests.length;
+    await f.cli('run.mjs', ['--resume', '--refresh-capture']);
+    assert.ok(f.requests.length > beforeRefresh);
+    const beforeReuse = f.requests.length;
+    await f.cli('run.mjs', ['--resume']);
+    assert.equal(f.requests.length, beforeReuse, 'unchanged resume still reuses capture');
+    f.spec.app.start = '/missing'; saveSpec();
+    await assert.rejects(f.cli('run.mjs', ['--resume', '--refresh-capture']));
+    assert.equal(JSON.parse(fs.readFileSync(path.join(f.dir, 'run-manifest.json'))).phases.capture.status, 'failed');
+    await refuseTwice();
+    f.spec.app.start = '/'; saveSpec();
+    await refuseTwice();
+  } finally { await f.close(); }
+});
+
 test('local CLI capture blocks writes, redacts exports, builds with mock voice, preserves last build', { timeout: 120000 }, async () => {
   const f = await fixture('integration');
   try {

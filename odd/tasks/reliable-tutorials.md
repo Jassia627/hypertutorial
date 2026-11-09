@@ -28,10 +28,10 @@ Implement the six approved improvement phases for the existing local hypertutori
 
 - [x] P1 — Validate and normalize a versioned spec before side effects; add a standalone validation command, path containment and legacy compatibility tests.
 - [x] P2 — Enforce explicit application policies, separate authentication, constrain scripts/storage, safely cancel and redact policy diagnostics.
-- [x] P3 — Preserve per-state CSS, form state and ID relationships; report resource failures, redact HTML/screenshots and make exports inert.
+- [ ] P3 — Reopened by independent verification: fix entity-aware secret redaction and preserve styling data attributes; other capture fidelity work is retained.
 - [x] P4 — Handle subprocess launch errors, exit codes, signals and output validation correctly; retain last successful outputs and bounded GPU fallback.
-- [x] P5 — Add dry-run/resumable orchestration with input/output invalidation and no unsafe action or paid-call replay.
-- [x] P6 — Qualify with local fixtures, mock voice, deterministic and visual checks; update user documentation and migration examples.
+- [x] P5 — Retain replay-consent evidence across repeated failed resumes, verified by the C1 regression; existing orchestrator work is retained.
+- [ ] P6 — Reopened for regression coverage and independent re-verification of the three findings; earlier qualification evidence is retained below.
 
 Each phase follows the delegated route above. Tests and relevant documentation belong with their behavior, not solely in P6.
 
@@ -159,6 +159,25 @@ the retained output/staging directories as part of rollback.
   browser cache. No browser download or package install was performed.
 
 ## Remaining limitations
+
+## Independent verification corrections (required before final delivery)
+
+- [x] C1: Preserve capture replay consent across repeated failed `--resume` attempts. Prior phase records now survive every earlier phase save; two refusals send zero new requests, explicit refresh replays, unchanged resume reuses, and failed-capture history also survives a later spec change.
+- [ ] C2: Redact known secrets in decoded DOM text and attribute values before serialization; HTML entity encoding currently bypasses raw-string replacement.
+- [ ] C3: Preserve inert `data-*` attributes needed by framework CSS while removing/redacting sensitive values.
+- [ ] C4: Add deterministic regressions, rerun all checks, independently re-verify and update final evidence.
+
+Independent baseline checks: 14 unit, 2 integration, 1 visual passed and local mock smoke rendered a validated 9.1-second MP4. Those tests did not cover the three regressions above; prior completion claims are provisional until these corrections pass.
+
+C1 RED: `node --test --test-name-pattern='repeated refused' tests/pipeline.integration.mjs`
+failed because the capture record disappeared after validation. GREEN: the same
+host-permission command passed 1/1 (19.5 seconds), covering repeated refusals,
+zero network replay, explicit refresh, unchanged reuse and failed capture.
+Route: delegated direct, bounded correction writer. Rollback scope: manifest
+initialization in `scripts/run.mjs` and its pipeline regression; unrelated phase
+implementations remain unchanged. Independent correction verification is pending.
+
+## Documented platform and fidelity limitations
 
 - Native shadow DOM, canvas/media/embeds and compound root selectors are reported
   or documented unsupported fidelity cases, not claimed pixel-exact.

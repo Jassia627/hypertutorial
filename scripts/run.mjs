@@ -19,7 +19,9 @@ const tools = fingerprint({ node: process.version, platform: process.platform, a
 const manifestPath = path.join(dir, 'run-manifest.json');
 let old;
 if (flags.has('--resume') && fs.existsSync(manifestPath)) { old = JSON.parse(fs.readFileSync(manifestPath, 'utf8')); if (old.version !== 1) throw new Error('Unsupported run manifest version'); }
-const manifest = { version: 1, tools, phases: {} };
+// Preserve prior evidence before any phase save. In particular, validation must
+// not erase the capture record that requires explicit authorization for replay.
+const manifest = { version: 1, tools, phases: structuredClone(old?.phases ?? {}) };
 const projected = privateProjection(spec);
 const controller = new AbortController();
 const cancel = () => controller.abort();
