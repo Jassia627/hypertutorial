@@ -1,0 +1,365 @@
+{
+  "title": "Cómo registrar una compra en DOSIS+",
+  "windowTitle": "DOSIS+ · Gestión de Compras",
+  "language": "es",
+  "output": "dosis-compras",
+  "theme": {
+    "bg": "#0b2a24",
+    "accent": "#16a34a",
+    "glow": "#16a34a55"
+  },
+  "font": "Outfit",
+  "app": {
+    "url": "http://localhost:5183",
+    "start": "/compras",
+    "width": 1440,
+    "captureHeight": 1500,
+    "viewportHeight": 810,
+    "locale": "es-CO"
+  },
+  "login": {
+    "url": "/auth",
+    "steps": [
+      {
+        "fill": "placeholder:correo@farmacia.com",
+        "value": "${APP_USER}"
+      },
+      {
+        "fill": "css:input[type=password]",
+        "value": "${APP_PASSWORD}"
+      },
+      {
+        "click": "button:Iniciar sesión"
+      },
+      {
+        "waitFor": "button:Cerrar Sesión"
+      }
+    ]
+  },
+  "intro": {
+    "kicker": "Tutorial DOSIS+",
+    "title": "Cómo registrar una compra",
+    "subtitle": "Del proveedor al inventario, por lote y con vencimiento",
+    "narration": "En este tutorial vas a registrar una compra a un proveedor en DOSIS más. Así el inventario, los lotes y los vencimientos quedan al día."
+  },
+  "outro": {
+    "kicker": "¡Compra registrada!",
+    "title": "El inventario ya quedó actualizado",
+    "subtitle": "Registra tu próxima factura de proveedor en DOSIS+",
+    "narration": "¡Listo! La compra quedó registrada y el inventario de la sede ya está actualizado."
+  },
+  "states": [
+    {
+      "name": "a-inicio",
+      "actions": [
+        {
+          "clearSessionStorage": "dosis_compra"
+        },
+        {
+          "goto": "/compras"
+        },
+        {
+          "wait": 1
+        }
+      ]
+    },
+    {
+      "name": "b-sede",
+      "actions": [
+        {
+          "click": "button:Ingresar a Drigueria norte RM"
+        }
+      ]
+    },
+    {
+      "name": "c-busqueda",
+      "actions": [
+        {
+          "fill": "placeholder:Buscar producto por nombre o código de barras... (F1 Edición Rápida)",
+          "value": "acetaminofen"
+        },
+        {
+          "waitFor": "text:SELECCIONADO (Enter | F1 / F8)"
+        }
+      ]
+    },
+    {
+      "name": "d-producto",
+      "actions": [
+        {
+          "click": "text:Acetaminofén 500mg"
+        },
+        {
+          "waitFor": "placeholder:Ej: LOTE123"
+        }
+      ]
+    },
+    {
+      "name": "e-proveedores",
+      "actions": [
+        {
+          "fill": "placeholder:Ej: LOTE123",
+          "value": "L2026-01"
+        },
+        {
+          "fill": "date:0",
+          "value": "2028-06-30"
+        },
+        {
+          "fill": "after:Costo Compra",
+          "value": "12000"
+        },
+        {
+          "fill": "after:Descuento",
+          "value": "1000"
+        },
+        {
+          "fill": "after:Precio Venta *",
+          "value": "15000"
+        },
+        {
+          "fill": "after:Cantidad",
+          "value": "10"
+        },
+        {
+          "click": "combobox:Selecciona un proveedor"
+        },
+        {
+          "waitFor": "option:SUMINISTROS DEL CÉSAR S.A.S."
+        }
+      ]
+    },
+    {
+      "name": "f-proveedor",
+      "actions": [
+        {
+          "click": "option:SUMINISTROS DEL CÉSAR S.A.S."
+        }
+      ]
+    },
+    {
+      "name": "h-confirmar",
+      "fixed": true,
+      "actions": [
+        {
+          "fill": "placeholder:N° Factura del Proveedor",
+          "value": "FV-1001"
+        },
+        {
+          "fill": "date:2",
+          "value": "2026-12-06"
+        },
+        {
+          "fill": "placeholder:Escribe notas adicionales sobre la factura o proveedor aquí...",
+          "value": "Compra de prueba para el tutorial."
+        },
+        {
+          "click": "button:Completar Compra"
+        },
+        {
+          "waitFor": "button:Volver a revisar"
+        }
+      ]
+    },
+    {
+      "name": "i-registrada",
+      "fixed": true,
+      "actions": [
+        {
+          "clearSessionStorage": "dosis_compra"
+        },
+        {
+          "goto": "/compras"
+        },
+        {
+          "click": "button:Ingresar a Drigueria norte RM",
+          "optional": true
+        },
+        {
+          "eval": "const m = await import('/src/hooks/use-toast.ts'); m.toast({ title: 'Compra registrada', description: 'Se ha registrado la compra y actualizado el inventario correctamente.' });"
+        },
+        {
+          "wait": 0.6
+        }
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "id": "pantalla",
+      "title": "Gestión de Compras",
+      "narration": "Estamos en Gestión de Compras, donde registras las facturas de tus proveedores.",
+      "state": "a-inicio",
+      "kind": "none"
+    },
+    {
+      "id": "sucursal",
+      "title": "Elige la sede",
+      "narration": "Primero elige la sede que recibe la mercancía.",
+      "state": "a-inicio",
+      "kind": "click",
+      "sel": "button:Ingresar a Drigueria norte RM",
+      "next": "b-sede"
+    },
+    {
+      "id": "buscar",
+      "title": "Busca el producto",
+      "narration": "Busca el producto por nombre o por código de barras.",
+      "state": "b-sede",
+      "kind": "type",
+      "sel": "placeholder:Buscar producto por nombre o código de barras... (F1 Edición Rápida)",
+      "value": "acetaminofen",
+      "next": "c-busqueda"
+    },
+    {
+      "id": "elegir",
+      "title": "Agrégalo a la compra",
+      "narration": "Selecciónalo para agregarlo a la compra.",
+      "state": "c-busqueda",
+      "kind": "click",
+      "sel": "text:Acetaminofén 500mg",
+      "next": "d-producto"
+    },
+    {
+      "id": "lote",
+      "title": "Número de lote",
+      "narration": "Escribe el número de lote que trae la caja.",
+      "state": "d-producto",
+      "kind": "type",
+      "sel": "placeholder:Ej: LOTE123",
+      "value": "L2026-01"
+    },
+    {
+      "id": "vence",
+      "title": "Fecha de vencimiento",
+      "narration": "Pon la fecha de vencimiento, para que DOSIS más te avise antes de que se venza.",
+      "state": "d-producto",
+      "kind": "date",
+      "sel": "date:0",
+      "value": "2028-06-30"
+    },
+    {
+      "id": "costo",
+      "title": "Costo de compra",
+      "narration": "Revisa el costo unitario: doce mil pesos.",
+      "state": "d-producto",
+      "kind": "type",
+      "sel": "after:Costo Compra",
+      "value": "12000"
+    },
+    {
+      "id": "descuento",
+      "title": "Descuento",
+      "narration": "Si el proveedor te dio un descuento, anótalo aquí. En este caso, mil pesos.",
+      "state": "d-producto",
+      "kind": "type",
+      "sel": "after:Descuento",
+      "value": "1000"
+    },
+    {
+      "id": "precio",
+      "title": "Precio de venta",
+      "narration": "Define el precio de venta al público: quince mil pesos.",
+      "state": "d-producto",
+      "kind": "type",
+      "sel": "after:Precio Venta *",
+      "value": "15000"
+    },
+    {
+      "id": "cantidad",
+      "title": "Cantidad",
+      "narration": "Indica cuántas unidades llegaron. Aquí son diez.",
+      "state": "d-producto",
+      "kind": "type",
+      "sel": "after:Cantidad",
+      "value": "10",
+      "set": {
+        "match": "$ 12.000",
+        "text": "$ 119.000"
+      }
+    },
+    {
+      "id": "proveedor",
+      "title": "Proveedor",
+      "narration": "Ahora elige el proveedor que te vendió la mercancía.",
+      "state": "d-producto",
+      "kind": "click",
+      "sel": "text:Selecciona un proveedor",
+      "next": "e-proveedores"
+    },
+    {
+      "id": "proveedor-opcion",
+      "title": "Proveedor",
+      "narration": "En este caso, Suministros del César.",
+      "state": "e-proveedores",
+      "kind": "click",
+      "sel": "option:SUMINISTROS DEL CÉSAR S.A.S.",
+      "next": "f-proveedor"
+    },
+    {
+      "id": "factura",
+      "title": "Número de factura",
+      "narration": "Escribe el número de la factura del proveedor.",
+      "state": "f-proveedor",
+      "kind": "type",
+      "sel": "placeholder:N° Factura del Proveedor",
+      "value": "FV-1001"
+    },
+    {
+      "id": "fecha-compra",
+      "title": "Fecha de compra",
+      "narration": "La fecha de compra viene con el día de hoy; cámbiala solo si la factura es de otro día.",
+      "state": "f-proveedor",
+      "kind": "hover",
+      "sel": "date:1"
+    },
+    {
+      "id": "fecha-pago",
+      "title": "Fecha de pago",
+      "narration": "Si la compra es a crédito, pon la fecha en que debes pagarla.",
+      "state": "f-proveedor",
+      "kind": "date",
+      "sel": "date:2",
+      "value": "2026-12-06"
+    },
+    {
+      "id": "observaciones",
+      "title": "Observaciones",
+      "narration": "Y si quieres, deja una nota sobre la factura o el proveedor.",
+      "state": "f-proveedor",
+      "kind": "type",
+      "sel": "placeholder:Escribe notas adicionales sobre la factura o proveedor aquí...",
+      "value": "Compra de prueba para el tutorial."
+    },
+    {
+      "id": "total",
+      "title": "Total de la compra",
+      "narration": "Revisa el total antes de guardarla: ciento diecinueve mil pesos, ya con el descuento.",
+      "state": "f-proveedor",
+      "kind": "hover",
+      "sel": "text:Total Compra:",
+      "highlight": "text:Total Compra:^"
+    },
+    {
+      "id": "completar",
+      "title": "Completa la compra",
+      "narration": "Haz clic en Completar Compra.",
+      "state": "f-proveedor",
+      "kind": "click",
+      "sel": "button:Completar Compra",
+      "next": "h-confirmar",
+      "after": "css:[role=dialog]"
+    },
+    {
+      "id": "confirmar",
+      "title": "Confirma el ingreso",
+      "narration": "Verifica la sede, el proveedor y el total, y confirma el ingreso de la mercancía.",
+      "state": "h-confirmar",
+      "kind": "click",
+      "sel": "dialog>> button:Ingresar a Drigueria norte RM",
+      "next": "i-registrada",
+      "after": "all",
+      "reveal": "text:Compra registrada << li"
+    }
+  ]
+}
