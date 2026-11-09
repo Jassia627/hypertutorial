@@ -4,6 +4,7 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { SKILL, loadProject, readEnv, interpolate } from './common.mjs';
 import { compilePolicy, checkAction, protectContext } from './capture-policy.mjs';
+import { captureState, inertDocument } from './capture-state.mjs';
 
 const { dir, spec } = loadProject(process.argv[2]);
 const policy = compilePolicy(spec);
@@ -41,15 +42,17 @@ async function act(page, a) {
   } catch { if (!a.optional || cancelled) throw new Error(cancelled ? 'Capture cancelled' : 'Capture action failed (details suppressed to protect values)'); }
 }
 async function snap(page, name) {
-  await page.evaluate(async () => { await document.fonts.ready; });
-  const data = await page.evaluate(() => {
-    const css = [...document.styleSheets].flatMap(sheet => { try { return [...sheet.cssRules].map(rule => rule.cssText); } catch { return []; } }).join('\n');
-    const clone = document.body.cloneNode(true);
-    clone.querySelectorAll('script,noscript,iframe').forEach(el => el.remove());
-    return { css, html: clone.innerHTML, htmlStyle: document.documentElement.getAttribute('style') ?? '', bodyClass: document.body.className };
-  });
+  const secrets = Object.entries(env).filter(([k]) => /PASSWORD|TOKEN|SECRET|KEY|APP_USER/.test(k)).map(([, v]) => v);
+  const data = await captureState(page, policy, secrets);
   fs.writeFileSync(path.join(OUT, `${name}.json`), JSON.stringify(data));
-  await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  // Screenshot the inert, redacted export, never the secret-bearing live page.
+  const preview = await browser.newPage({ viewport: { width: W, height: H }, serviceWorkers: 'block' });
+  try {
+    await preview.route('**/*', route => route.abort());
+    await preview.setContent(inertDocument(data));
+    await preview.evaluate(async () => { await document.fonts.ready; });
+    await preview.screenshot({ path: path.join(OUT, `${name}.png`) });
+  } finally { await preview.close(); }
   console.log('Captured:', name);
 }
 try {

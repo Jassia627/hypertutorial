@@ -74,4 +74,14 @@ cleanup. RED: policy tests failed missing module. GREEN: `npm.cmd test` 5 pass,
 qualified against browser integration. Migration documents GET side effects and
 isolation as primary protection. RDD remains off.
 
+P2 commit: `5f1ebaa`. P3: added protected asset inlining, stylesheet base handling,
+ordered per-state CSS, live form serialization, default/custom redaction, inert
+redacted screenshots and shadow-root state isolation preserving IDs/references.
+RED: `node --test tests/capture.integration.mjs` missing capture-state module.
+GREEN: same command with host-browser permission passed 1/1. Sandbox browser
+lookup has no installed Chromium; host run uses installed Chromium, no download.
+Unsupported native shadow/canvas/media and inaccessible CSS are diagnostics;
+compound :root selectors remain a documented fidelity limitation. Actual build
+and HyperFrames qualification pending P6.
+
 Implement P1 on the feature branch, then proceed in order and record phase outcomes, commands, limitations and commit identities below. Do not mark a phase complete merely because files exist.

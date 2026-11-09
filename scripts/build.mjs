@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { SKILL, loadProject } from './common.mjs';
 import { makeBed, resolveTrack } from './music.mjs';
+import { mountStates } from './style-isolation.mjs';
 
 const { dir, spec } = loadProject(process.argv[2]);
 const OUT = path.join(dir, 'hf');
@@ -23,8 +24,7 @@ const states = Object.fromEntries(spec.states.map((s) => [s.name, JSON.parse(fs.
 const used = [...new Set(spec.steps.flatMap((s) => [s.state, s.next].filter(Boolean)))];
 for (const n of used) if (!states[n]) throw new Error('Estado no capturado: ' + n);
 const first = states[used[0]];
-const appCss = first.css.replace(/#root\b/g, '.app-root');
-const clean = (html) => html.replace('<div id="root">', '<div class="app-root">').replace(/\sid="[^"]*"/g, '');
+const scriptJSON = value => JSON.stringify(value).replaceAll('<', '\\u003c');
 const fixedOf = (n) => spec.states.find((s) => s.name === n)?.fixed;
 
 // --- schedule (seconds) ------------------------------------------------------
@@ -60,11 +60,11 @@ const html = `<!doctype html>
 <html lang="${spec.language ?? 'es'}" style="${first.htmlStyle.replace(/"/g, '&quot;')}">
 <head>
 <meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data:" />
 <meta name="viewport" content="width=1920, height=1080" />
 <script src="gsap.min.js"></script>
 <style>${fs.readFileSync(path.join(dir, 'states/fonts.css'), 'utf8')}
 ${emoji}</style>
-<style>${appCss}</style>
 <style>
   html, body { margin: 0 !important; width: 1920px !important; height: 1080px !important; overflow: hidden !important; background: ${theme.bg} !important; }
   #hf-root { position: relative; width: 100%; height: 100%; overflow: hidden; font-family: '${font}', sans-serif; }
@@ -99,7 +99,7 @@ ${emoji}</style>
     <div id="win">
       <div id="bar"><i style="background:#f87171"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><b>${esc(spec.windowTitle ?? spec.title)}</b></div>
       <div id="vp"><div id="world">
-${used.map((n) => `        <div class="layer ${states[n].bodyClass}" data-state="${n}"${fixedOf(n) ? ` style="height:${VH0}px"` : ''}>${clean(states[n].html)}</div>`).join('\n')}
+${used.map((n) => `        <div class="layer" data-state="${n}"${fixedOf(n) ? ` style="height:${VH0}px"` : ''}></div>`).join('\n')}
         <div id="hl"></div><div id="rip"></div>
         <div id="cur"><svg viewBox="0 0 30 40"><path d="M2 2 L2 32 L10 25 L15 37 L21 34 L16 22 L27 22 Z" fill="#fff" stroke="#0f172a" stroke-width="2.4" stroke-linejoin="round"/></svg></div>
       </div></div>
@@ -116,13 +116,14 @@ ${plan.map((p) => '  ' + audio(p.id, p.t)).join('\n')}
 </div>
 <script>${fs.readFileSync(path.join(SKILL, 'scripts/finder.js'), 'utf8')}</script>
 <script>
-const PLAN = ${JSON.stringify(plan.map(({ narration, ...p }) => p))};
+(${mountStates.toString()})(${scriptJSON(states)});
+const PLAN = ${scriptJSON(plan.map(({ narration, ...p }) => p))};
 const INTRO = ${JSON.stringify(intro)}, OUTRO = ${JSON.stringify(outro)}, STATES = ${JSON.stringify(used)}, FIXED = ${JSON.stringify(used.filter(fixedOf))};
 const hOf = (n) => (FIXED.includes(n) ? ${VH0} : WH);
 const VW = 1600, VH = 900, WW = ${W}, WH = ${CH}, BASE = VW / WW;
 const world = document.getElementById('world');
 const layerEl = (n) => document.querySelector('[data-state="' + n + '"]');
-const find = (n, sel) => window.__htFind(layerEl(n), sel);
+const find = (n, sel) => window.__htFind(layerEl(n).shadowRoot.querySelector('body'), sel);
 function rect(el) {
   const r = el.getBoundingClientRect(), w = world.getBoundingClientRect();
   return { x: r.left - w.left, y: r.top - w.top, w: r.width, h: r.height };

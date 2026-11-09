@@ -22,3 +22,25 @@ Replace eval toasts with `{ "toast": "Saved (simulation)" }`. Arbitrary eval nee
 `trustedEval: true` and a trusted isolated app. Storage clearing needs explicit
 `storagePrefixes` (at least three characters); actions can use narrower prefixes,
 never empty. Production capture needs `allowProduction: true`; it is discouraged.
+
+## Fidelity and redaction
+
+Each state retains its own ordered CSS and live form properties. Build mounts
+states in separate shadow roots, preserving IDs, labels, ARIA links and SVG
+fragments. It does not globally rename IDs or reuse only the first state's CSS.
+Simple `:root` rules use parsed CSSOM selectors; compound document-root selectors
+may differ in shadow DOM and must be visually reviewed. Root custom properties
+are copied inline. Native shadow roots, canvas, video and embedded frames are
+unsupported and reported, not silently claimed pixel-exact.
+
+Assets (including CSS URLs and fonts) are fetched through the same explicit
+capture rules using each stylesheet's base URL. Failed assets and inaccessible
+cross-origin stylesheets appear as sanitized diagnostics. Fonts and images settle
+before capture. A missing font can still change layout: inspect all frames.
+
+Passwords, hidden/token/secret inputs and known credential values are redacted.
+Declare extra CSS selectors in `capturePolicy.redactSelectors` for customer PII,
+including images. Screenshots come from the redacted inert export, not the live
+app. Binary image content cannot be automatically recognized as PII. Exported
+handlers/scripts/active embeds are removed; CSP denies app API access and form
+submission. Review redacted exports before distributing any tutorial.
