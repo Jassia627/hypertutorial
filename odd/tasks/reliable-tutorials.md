@@ -31,7 +31,7 @@ Implement the six approved improvement phases for the existing local hypertutori
 - [x] P3 — Fix entity-aware secret redaction and preserve inert styling data attributes; C2/C3 regressions and existing fidelity tests pass.
 - [x] P4 — Handle subprocess launch errors, exit codes, signals and output validation correctly; retain last successful outputs and bounded GPU fallback.
 - [x] P5 — Retain replay-consent evidence across repeated failed resumes, verified by the C1 regression; existing orchestrator work is retained.
-- [ ] P6 — Reopened for regression coverage and independent re-verification of the three findings; earlier qualification evidence is retained below.
+- [x] P6 — Qualified with regression coverage, fresh independent verification and parent unit/visual spot checks; final evidence is recorded below.
 
 Each phase follows the delegated route above. Tests and relevant documentation belong with their behavior, not solely in P6.
 
@@ -165,7 +165,7 @@ the retained output/staging directories as part of rollback.
 - [x] C1: Preserve capture replay consent across repeated failed `--resume` attempts. Prior phase records now survive every earlier phase save; two refusals send zero new requests, explicit refresh replays, unchanged resume reuses, and failed-capture history also survives a later spec change.
 - [x] C2: Redact known secrets in decoded DOM text and attribute values before serialization, retaining browser escaping and markup structure. Tests cover ampersands, angle brackets, both quote types, text, title/ARIA/form attributes and a credential matching an HTML tag name.
 - [x] C3: Preserve inert `data-state`, `data-side` and other styling attributes while removing sensitive named attributes and redacting known values. Attribute-selector computed foreground/background styles now survive alongside redaction and event-handler removal.
-- [ ] C4: Add deterministic regressions, rerun all checks, independently re-verify and update final evidence.
+- [x] C4: Deterministic regressions pass, all required checks have observed results, fresh independent verification passed at `4583c04`, and parent spot checks passed.
 
 Independent baseline checks: 14 unit, 2 integration, 1 visual passed and local mock smoke rendered a validated 9.1-second MP4. Those tests did not cover the three regressions above; prior completion claims are provisional until these corrections pass.
 
@@ -220,7 +220,33 @@ No new video render was needed for this nonvisual removal; the parent reports
 fresh independent visual/smoke qualification at `tests/artifacts/smoke-rUX4Fw`
 with the already documented warnings. Rollback scope: comment removal in
 `scripts/capture-state.mjs` and its exact capture integration regression.
-Independent recheck of this final correction remains pending; C4/P6 stay open.
+Final independent recheck passed at `4583c04`: all four deterministic findings
+closed, integration 6/6 with no failures or skips, and clean diff checks. This
+supersedes the pending-verification notes above while preserving their history.
+
+## Final closure
+
+- P1-P6 and C1-C4 are complete. Feature route remained delegated direct with one
+  writer at a time, then fresh independent verification; no native review was
+  started because RDD is off.
+- Parent reran `npm.cmd test` on final source: 14 passed, no failures or skips,
+  including real junction containment. `git diff --check 3df3e5c` passed.
+- Fresh independent final integration: 6 passed, no failures or skips. Previous
+  independent visual: 1 passed; the parent also inspected a generated frame.
+- Latest independent smoke `tests/artifacts/smoke-rUX4Fw`: successful validated
+  9.1-second, 1.2 MB MP4, two snapshots, verified resume and tamper refusal.
+  The final comment-removal-only patch was integration-tested rather than
+  re-rendered because it cannot alter visible layout. Seven lint warnings and
+  three optional-font failures remain documented, not reported as test failures.
+- Correction commits: `6032833` (durable replay consent), `9b5d7f0` (decoded
+  redaction and styling attributes), `4583c04` (non-visible comment leakage).
+- No failed, skipped or pending required checks. Paid providers and forced real
+  GPU failures were intentionally not exercised; mock/CPU-fallback tests apply.
+- Only pre-existing `.codegraph/`, `AGENTS.md`, and `output/` remain untracked.
+  Work is local on `codex/reliable-tutorials`; main, remote repositories and
+  other projects were not modified. No push, PR or merge occurred.
+- Next step: use the documented migration and explicit isolated capture policy
+  for a user-selected tutorial; do not run against a real application implicitly.
 
 ## Documented platform and fidelity limitations
 
