@@ -22,15 +22,28 @@ const out = path.join(dir, 'voice');
 fs.mkdirSync(out, { recursive: true });
 const manifestFile = path.join(out, 'voice.json');
 const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, 'utf8')) : {};
+const controller = new AbortController();
+const cancel = () => controller.abort();
+process.once('SIGINT', cancel); process.once('SIGTERM', cancel);
 const beats = [['intro', spec.intro?.narration], ...spec.steps.map((s) => [s.id, s.narration]), ['outro', spec.outro?.narration]].filter(([, t]) => t);
 
-for (const [id, text] of beats) {
+try { for (const [id, text] of beats) {
   const key = crypto.createHash('sha1').update(JSON.stringify([text, name, v])).digest('hex').slice(0, 12);
   const file = path.join(out, id + '.wav');
-  if (manifest[id]?.key === key && fs.existsSync(file)) continue;
+  const digest = f => crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+  if (manifest[id]?.key === key && fs.existsSync(file) && manifest[id].hash === digest(file)) continue;
   console.log(`voz ${id} (${name})…`);
-  await tts({ text, ...v, env, outFile: file });
-  manifest[id] = { key, text, duration: duration(file) };
-  fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2));
-}
+  const staged = path.join(out, `.ht-${crypto.randomUUID()}.wav`);
+  try {
+    await tts({ text, ...v, env, outFile: staged, signal: controller.signal });
+    if (controller.signal.aborted) throw new Error('Narration cancelled');
+    const seconds = duration(staged);
+    if (!Number.isFinite(seconds) || seconds <= 0) throw new Error('Invalid narration artifact');
+    fs.renameSync(staged, file);
+    manifest[id] = { key, duration: seconds, hash: digest(file) };
+    const temp = manifestFile + '.tmp';
+    fs.writeFileSync(temp, JSON.stringify(manifest, null, 2));
+    fs.renameSync(temp, manifestFile);
+  } finally { if (fs.existsSync(staged)) fs.unlinkSync(staged); }
+} } finally { process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel); }
 console.log(`✔ voz lista: ${beats.length} audios con ${name}`);

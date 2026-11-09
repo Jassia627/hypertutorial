@@ -5,14 +5,14 @@ import path from 'node:path';
 import { SKILL, loadProject } from './common.mjs';
 import { makeBed, resolveTrack } from './music.mjs';
 import { mountStates } from './style-isolation.mjs';
+import { publishDirectory } from './paths.mjs';
 
 const { dir, spec } = loadProject(process.argv[2]);
-const OUT = path.join(dir, 'hf');
+const OUT = fs.mkdtempSync(path.join(dir, '.ht-build-'));
 const VOICE = path.join(dir, 'voice');
 const voice = JSON.parse(fs.readFileSync(path.join(VOICE, 'voice.json'), 'utf8'));
 const theme = { bg: '#0b2a24', accent: '#16a34a', glow: '#16a34a55', ...spec.theme };
 
-fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(path.join(OUT, 'audio'), { recursive: true });
 fs.cpSync(path.join(dir, 'states/fonts'), path.join(OUT, 'states/fonts'), { recursive: true });
 fs.copyFileSync(path.join(SKILL, 'node_modules/gsap/dist/gsap.min.js'), path.join(OUT, 'gsap.min.js'));
@@ -200,5 +200,9 @@ window.__timelines['main'] = tl;
 </html>
 `;
 fs.writeFileSync(path.join(OUT, 'index.html'), html);
-fs.writeFileSync(path.join(dir, 'times.json'), JSON.stringify(plan.map((p) => ({ id: p.id, start: p.t, action: +(p.t + p.act).toFixed(2), check: +(p.t + p.act + p.typeDur + 0.7).toFixed(2) })), null, 1));
+fs.writeFileSync(path.join(OUT, 'times.json'), JSON.stringify(plan.map((p) => ({ id: p.id, start: p.t, action: +(p.t + p.act).toFixed(2), check: +(p.t + p.act + p.typeDur + 0.7).toFixed(2) })), null, 1));
+publishDirectory(dir, OUT, 'hf');
+const timesTemp = path.join(dir, `.ht-times-${process.pid}.json`);
+fs.copyFileSync(path.join(dir, 'hf/times.json'), timesTemp);
+fs.renameSync(timesTemp, path.join(dir, 'times.json'));
 console.log(`✔ hf/index.html · ${TOTAL} s · ${plan.length} pasos · tiempos en times.json`);

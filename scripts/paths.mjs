@@ -17,3 +17,16 @@ export function containedPath(root, relative) {
   }
   return target;
 }
+
+/** Publish complete builds only; roll back a failed directory rename. */
+export function publishDirectory(root, stage, name) {
+  const target = containedPath(root, name);
+  const source = containedPath(root, path.relative(root, stage));
+  const backup = containedPath(root, `.ht-backup-${name}-${Date.now()}`);
+  const existed = fs.existsSync(target);
+  if (existed) fs.renameSync(target, backup);
+  try { fs.renameSync(source, target); }
+  catch (error) { if (existed) fs.renameSync(backup, target); throw error; }
+  // Backups deliberately retained: no recursive deletion of unknown contents.
+  return target;
+}

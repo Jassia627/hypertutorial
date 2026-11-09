@@ -8,3 +8,8 @@ snaps/
 *.mp4
 music/*
 !music/README.md
+.ht-*/
+.ht-*.mp4
+.ht-*.json
+run-manifest.json
+tests/artifacts/

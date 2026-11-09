@@ -84,4 +84,12 @@ Unsupported native shadow/canvas/media and inaccessible CSS are diagnostics;
 compound :root selectors remain a documented fidelity limitation. Actual build
 and HyperFrames qualification pending P6.
 
+P3 commit: `2e8db6e`. P4 adds asynchronous subprocess launch/status/signal/
+timeout/cancel checks, privacy environment preserved on one recognized GPU-startup
+retry, ffprobe-validated staged video publication and staged build rollback.
+Build backups are retained, never recursively deleted. Narration writes staged
+WAVs, validates duration/hash, atomically updates cache and supports cancellation.
+Provider error bodies are suppressed. RED: process tests missing module; GREEN:
+`npm.cmd test` 8 pass and 1 sandbox junction skip. Render qualification pending.
+
 Implement P1 on the feature branch, then proceed in order and record phase outcomes, commands, limitations and commit identities below. Do not mark a phase complete merely because files exist.
