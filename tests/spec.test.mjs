@@ -16,6 +16,15 @@ test('reject unsupported versions, references, malformed actions and unsafe name
     const s = fixture(); change(s); assert.throws(() => normalizeSpec(s));
   }
 });
+test('reject filename collisions on case-insensitive hosts and unsafe CSS interpolation', () => {
+  const s = fixture(); s.states.push({ name: 'START' }); assert.throws(() => normalizeSpec(s));
+  const bad = fixture(); bad.font = "Arial';background:url(https://example.invalid)"; assert.throws(() => normalizeSpec(bad));
+});
+test('reject invalid narration, card, provider and replacement data before any phase', () => {
+  for (const change of [s => s.intro = { narration: {} }, s => s.steps[0].narration = 123, s => s.steps[0].set = { match: 'x' }, s => s.voice = 'mock', s => s.states[0].fixed = 'yes']) {
+    const s = fixture(); change(s); assert.throws(() => normalizeSpec(s));
+  }
+});
 test('existing output symlinks cannot escape project', (t) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ht-spec-'));
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ht-out-'));

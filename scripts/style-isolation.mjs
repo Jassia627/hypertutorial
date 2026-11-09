@@ -2,7 +2,7 @@
  * IDs plus label/ARIA/SVG fragment references without renaming or global CSS. */
 export function mountStates(states) {
   for (const [name, data] of Object.entries(states)) {
-    const host = document.querySelector(`[data-state="${name}"]`);
+    const host = document.querySelector('[data-state="' + name + '"]');
     if (!host) continue;
     const root = host.attachShadow({ mode: 'open' });
     const html = document.createElement('html');
@@ -14,6 +14,9 @@ export function mountStates(states) {
     const style = document.createElement('style');
     style.textContent = data.css;
     root.append(style, html); html.append(body);
+    const frozen = document.createElement('style');
+    frozen.textContent = '*,*::before,*::after{animation:none!important;transition:none!important}';
+    root.append(frozen);
     // Use the browser's CSS parser, never regex-renaming IDs or selectors.
     // :root does not match a shadow child; root variables are captured inline.
     // Rewrite only parsed selectors that target the root document element.

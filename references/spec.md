@@ -61,8 +61,19 @@ Each action is an object with one of these keys:
 | `{ "press": "Enter" }` | press a key |
 | `{ "waitFor": sel }` | wait up to 20 s for an element |
 | `{ "wait": 1.5 }` | wait seconds |
-| `{ "eval": "js" }` | run async JS in the page (e.g. call the app's own toast) |
-| `{ "clearSessionStorage": "prefix" }` | remove sessionStorage keys starting with the prefix (resets drafts) |
+| `{ "toast": "Saved (simulation)" }` | declarative local-only simulation, without app handlers |
+| `{ "eval": "js" }` | trusted isolated apps only; requires `capturePolicy.trustedEval: true` |
+| `{ "clearSessionStorage": "prefix" }` | remove only keys within explicitly authorized `storagePrefixes` |
+
+## Capture policy (required for live capture)
+
+See `examples/safe-local.json` and `references/migration.md` for policy and resume
+rules. `capturePolicy` contains `environment` (`isolated`, `staging`, or explicitly
+opted-in `production`), `origins`, separate `auth` and `capture` request arrays,
+optional `storagePrefixes`, `redactSelectors`, `trustedEval` and `authRevision`.
+Each request rule has exact `origin`, `path`, uppercase `method` and `operation`
+(`read` or `write`). POST reads additionally require exact GraphQL `operationName`
+and `document`; no wildcard or implicit write routes. Isolation remains primary.
 
 A state with `"fixed": true` is laid out at `viewportHeight` so modals and toasts appear where the user sees them.
 

@@ -49,6 +49,7 @@ export async function protectContext(context, policy, phase, diagnostics) {
   await context.routeWebSocket('**/*', ws => { diagnostics.push({ phase, reason: 'websocket-denied' }); ws.close(); });
   await context.addInitScript(() => {
     Object.defineProperty(window, 'RTCPeerConnection', { value: undefined, configurable: false });
+    Object.defineProperty(window, 'WebTransport', { value: undefined, configurable: false });
     Object.defineProperty(navigator, 'sendBeacon', { value: () => false, configurable: false });
   });
 }

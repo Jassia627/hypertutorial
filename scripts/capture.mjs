@@ -75,9 +75,14 @@ try {
       for (const a of state.actions ?? []) await act(page, a);
       if (!only || only === state.name) await snap(page, state.name);
     }
+    const fonts = spec.states.filter(s => !only || s.name === only).flatMap(s => JSON.parse(fs.readFileSync(path.join(OUT, `${s.name}.json`), 'utf8')).fonts ?? []);
+    fs.writeFileSync(path.join(OUT, 'fonts.css'), [...new Set(fonts)].join('\n'));
     fs.writeFileSync(path.join(OUT, 'diagnostics.json'), JSON.stringify(diagnostics, null, 2));
   } finally { await context.close(); }
   if (cancelled) throw new Error('Capture cancelled');
+} catch {
+  console.error(cancelled ? 'Capture cancelled' : 'Capture failed; browser details suppressed to protect URLs and input values. Check explicit policy rules and state diagnostics.');
+  process.exitCode = cancelled ? 130 : 1;
 } finally {
   await browser?.close();
   process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel);

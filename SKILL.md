@@ -1,13 +1,34 @@
 ---
 name: hypertutorial
-description: Produce tutorial videos of a web app as a HyperFrames animation built from the app's real page (captured HTML + CSS), not a screen recording. A cursor, typing, camera zoom, dropdowns, dialogs and toasts are animated over pixel-exact copies of each screen state, with AI narration (Speko, ElevenLabs, OpenAI), captions, step badges, intro and outro. Use it whenever the user asks for a "hypertutorial", an animated or HyperFrames tutorial or walkthrough of their app, or a tutorial "exactly like the app" that must not save real data.
+description: Produce tutorial videos of a web app as a HyperFrames animation built from captured HTML and CSS, not a screen recording. Animate a cursor, typing, camera zoom, dropdowns, dialogs and simulated toasts over isolated screen states, with narration, captions, step badges, intro and outro. Use for hypertutorials and animated walkthroughs. Live capture requires explicit app policy and isolated data; fidelity and no-write safety require verification, not assumptions.
 ---
 
 # hypertutorial
 
-You turn a flow of a web app into an animated video. The app is never recorded: you capture each **state** of the page (static HTML + CSS + fonts), then HyperFrames animates a cursor and the UI changes between those states. The result looks exactly like the app, renders in minutes, and does not need the final action to touch the database.
+You turn a flow of a web app into an animated video. Capture each **state** of the page (static HTML + CSS + fonts), then HyperFrames animates a cursor and changes between those states. Verify fidelity visually and simulate final success instead of invoking an irreversible operation.
 
 Scripts live in `scripts/` next to this file (`<skill>` below) and use the skill's own `node_modules` (Playwright, HyperFrames, GSAP, FFmpeg).
+
+## Safety contract (read before capture)
+
+Validate first: `node <skill>/scripts/validate.mjs <project>`. New specs use
+`version: 1`; legacy specs normalize without rewriting. Capture requires an
+explicit `capturePolicy` with separate `auth` and `capture` exact request rules.
+Start from `examples/safe-local.json` and read `references/migration.md`.
+Use disposable app data and minimal server-side permissions: GET can mutate data,
+so interception is defense in depth, NEVER a universal no-write guarantee.
+Stop before irreversible actions. Prefer `{ "toast": "Saved (simulation)" }` to
+app eval, which is disabled unless explicitly trusted. Password/token inputs and
+configured PII selectors are redacted before inert exports and screenshots.
+Inspect every PNG and state diagnostic. Native shadow/canvas/media and compound
+root selectors are not guaranteed faithful. HyperFrames may fetch/substitute
+fonts unless a local captured font face is supplied; mock voice is only a tone.
+
+`node <skill>/scripts/run.mjs <project> --dry-run` plans without side effects.
+`--resume` reuses verified phase outputs; failed capture needs explicit
+`--refresh-capture` and restarts the whole sequence. Paid narration through run
+needs `--allow-paid`, never automatic retries. Add `--render --draft` for local
+preview. `HT_NO_ENV=1` excludes the skill .env and credential variables for tests.
 
 ## 0. Requirements (check before anything else)
 
@@ -45,7 +66,7 @@ A **state** is one screen of the flow. `actions` run in order against the live a
 - **Order:** one state per visible change the viewer must see, such as a dropdown opening, a product row appearing or a dialog. Typing into fields does not need its own state, because the composition animates typing.
 - **Next state:** fill the fields of a state in the actions of the *next* state, so it is captured already filled. Example: `e-proveedores` fills the row and then opens the supplier list.
 - **Overlays:** mark states that show a modal, dialog or toast with `"fixed": true`, so those overlays sit inside the real visible viewport (`viewportHeight`).
-- **Never click the final irreversible button** (save, pay, send, confirm). Capture the confirmation dialog and stop there. For the "after" screen, reset the page (`clearSessionStorage`, `goto`). If you want a success toast, raise it with the app's own toast function through `eval`, for example `const m = await import('/src/hooks/use-toast.ts'); m.toast({...})` in a Vite app. Then nothing is saved.
+- **Never click the final irreversible button** (save, pay, send, confirm). Capture the confirmation dialog and stop there. For the "after" screen, reset an explicitly authorized storage prefix and navigate. Prefer `{ "toast": "Saved (simulation)" }` for a declarative success simulation. Never infer that clicking or running app code is read-only.
 
 Capture, then **look at every `states/*.png`** to check that each screen is the one you expect:
 
@@ -108,5 +129,5 @@ Deliver the file, its duration, and what was simulated, such as the success toas
 - **`No encontré: …` in build or capture:** the text differs, for example with extra spaces, an accent or a different case set by CSS `uppercase`. The DOM keeps the original case: copy the text from the source code or the captured HTML, not from the screenshot.
 - **Typed value looks wrong at the end:** the step's `state` is captured with a stale value. Check that the state before the typing step was captured before that field was filled.
 - **Modal or toast off screen:** the state needs `"fixed": true`.
-- **Session expired:** delete `<project>/.auth.json` and capture again (it logs in with `login.steps`).
+- **Session expired:** capture again with authorized `login.steps`; sessions now transfer in memory and `.auth.json` is not reused.
 - **Fonts look generic:** check `fuentes: N` in the capture output, and that the app's fonts load from a reachable URL.

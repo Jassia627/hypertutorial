@@ -26,12 +26,12 @@ Implement the six approved improvement phases for the existing local hypertutori
 
 ## Tasks
 
-- [ ] P1 — Validate and normalize a versioned spec before side effects; add a standalone validation command, path containment and legacy compatibility tests.
-- [ ] P2 — Enforce explicit application policies, separate authentication, constrain scripts/storage, safely cancel and redact policy diagnostics.
-- [ ] P3 — Preserve per-state CSS, form state and ID relationships; report resource failures, redact HTML/screenshots and make exports inert.
-- [ ] P4 — Handle subprocess launch errors, exit codes, signals and output validation correctly; retain last successful outputs and bounded GPU fallback.
-- [ ] P5 — Add dry-run/resumable orchestration with input/output invalidation and no unsafe action or paid-call replay.
-- [ ] P6 — Qualify with local fixtures, mock voice, deterministic and visual checks; update user documentation and migration examples.
+- [x] P1 — Validate and normalize a versioned spec before side effects; add a standalone validation command, path containment and legacy compatibility tests.
+- [x] P2 — Enforce explicit application policies, separate authentication, constrain scripts/storage, safely cancel and redact policy diagnostics.
+- [x] P3 — Preserve per-state CSS, form state and ID relationships; report resource failures, redact HTML/screenshots and make exports inert.
+- [x] P4 — Handle subprocess launch errors, exit codes, signals and output validation correctly; retain last successful outputs and bounded GPU fallback.
+- [x] P5 — Add dry-run/resumable orchestration with input/output invalidation and no unsafe action or paid-call replay.
+- [x] P6 — Qualify with local fixtures, mock voice, deterministic and visual checks; update user documentation and migration examples.
 
 Each phase follows the delegated route above. Tests and relevant documentation belong with their behavior, not solely in P6.
 
@@ -100,4 +100,72 @@ Auth secrets are excluded rather than hashed; reusable auth requires nonsecret
 authRevision. RED: run tests missing module. GREEN: `npm.cmd test` 10 pass,
 1 sandbox junction skip. Full dry-run/resume fixture execution follows in P6.
 
-Implement P1 on the feature branch, then proceed in order and record phase outcomes, commands, limitations and commit identities below. Do not mark a phase complete merely because files exist.
+Parent independently verifies and mirrors this full document to Engram. All six
+implementation phases are locally qualified; no push, PR or merge.
+
+## Final qualification evidence
+
+- P5 commit: `80d9cfd`. P6 route: delegated direct, same single writer; no new
+  dependencies, no real app capture, provider calls or publishing.
+- `npm.cmd test`: 14/14 pass under host permissions, including actual junction
+  containment, process launch/status/timeout/abort, policy, manifest and legacy
+  normalization. Sandbox-only runs may explicitly skip junction creation EPERM.
+- Final semantic hardening rejects malformed narration/card/provider/replacement
+  shapes before any phase. Observed RED from missing expected validation, then
+  GREEN in the full unit suite. A Windows staged-directory rename returned EPERM
+  during one smoke; publication now retries only bounded sharing-lock error codes
+  (five attempts maximum), with a deterministic RED/GREEN regression test. The
+  cause of that transient OS denial was not established; no data was deleted.
+- `npm.cmd run test:integration`: 2/2 pass. Browser exports preserve live forms,
+  ID relationships and redactions; POST /write does not reach the local server;
+  unchanged mock voice reuses WAVs; failed build preserves existing composition.
+- Query-token privacy regression: observed RED when Playwright's uncaught
+  navigation failure printed a fixture query secret; GREEN after suppressing raw
+  browser exceptions at the capture boundary. Policy diagnostics contain no URLs.
+- `npm.cmd run test:visual`: 1/1 pass on generated composition; separate state
+  colors, forms and SVG/ARIA/label references verified. Frames were inspected.
+  Observed RED for check-times sampling caption fade-out on short beats; GREEN
+  after clamping QA times before fade-out. A returned GSAP timeline is thenable;
+  Playwright seeks must return void rather than await a paused timeline.
+- Smoke `smoke-0AAr1z`: lint 0 errors / 7 non-blocking nested-structure warnings,
+  2 HyperFrames snapshots, validated 9.1-second draft MP4 (1.2 MB, 32.3 s render),
+  verified full resume without HTTP replay and corrupted-output rejection.
+- Final frozen-source closure: `npm.cmd test` 14/14, `npm.cmd run
+  test:integration` 2/2, `npm.cmd run test:visual` 1/1 and `npm.cmd run smoke`
+  exit 0. Latest smoke `tests/artifacts/smoke-s5KtwU` passed lint, both snapshots,
+  validated a 9.1-second draft MP4 (1.2 MB; 55.6 seconds render), resumed all phases
+  without HTTP replay and refused tampered capture outputs. Final visual frames
+  `tests/artifacts/visual-e9xGbZ/next-frame.png` and `done-frame.png` were inspected:
+  readable captions/badges, redacted fixture fields, stable form/ID relationships.
+- `git diff --check` passed; both existing and safe-local examples normalized.
+  Final check failures/skips: none under host permission. Paid providers and forced
+  GPU startup failure are deliberately not exercised beyond local mocks/unit proof.
+
+## Work-unit rollback boundary
+
+The feature is local-only. Phase commits form a dependency sequence; revert newest
+first to remove qualification/run/runtime/capture/spec behavior without touching
+the pre-existing untracked `.codegraph/`, `AGENTS.md` or `output/`. No generated
+fixture artifacts or credentials belong to the commits. Do not recursively delete
+the retained output/staging directories as part of rollback.
+- An early smoke unexpectedly fetched Google Fonts through HyperFrames system
+  font normalization. Subsequent fixtures use an already installed bundled font,
+  explicit local asset rules and a test-only Node HTTP/fetch loopback guard.
+  Offline-guarded smoke passed without any denied external request marker.
+- Host Chromium is required here because the sandbox points to a different empty
+  browser cache. No browser download or package install was performed.
+
+## Remaining limitations
+
+- Native shadow DOM, canvas/media/embeds and compound root selectors are reported
+  or documented unsupported fidelity cases, not claimed pixel-exact.
+- Custom PII needs explicit selectors; binary images cannot be auto-redacted.
+  Request interception is not a universal no-write guarantee; isolation is primary.
+- Generic/system fonts can trigger HyperFrames external font localization outside
+  the controlled fixture. Supply a captured local face when offline is required.
+- HyperFrames reports three optional emoji font failures on this Windows host and
+  sometimes forcibly closes its own browser after a shutdown timeout. Draft video
+  validation succeeds. CPU fallback recognition is unit-tested, not forced against
+  actual GPU hardware. Paid providers deliberately remain uncalled.
+- A single run per project is required. Build backups are deliberately retained.
+- Independent verification and the Engram full-document mirror are parent-owned.

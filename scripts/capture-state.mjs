@@ -6,6 +6,7 @@ export async function captureState(page, policy, secrets = []) {
     const diagnostics = [];
     const scrub = value => secrets.filter(Boolean).reduce((s, secret) => s.split(secret).join('[REDACTED]'), String(value));
     const assets = new Map();
+    const fonts = [];
     async function asset(url, base) {
       if (!url || url.startsWith('#') || url.startsWith('data:')) return url;
       let absolute;
@@ -48,7 +49,9 @@ export async function captureState(page, policy, secrets = []) {
       const result = [];
       for (const rule of list) {
         if (rule.type === CSSRule.IMPORT_RULE) { result.push(await rules(rule.styleSheet)); continue; }
-        result.push(await urls(rule.cssText, sheet.href || document.baseURI));
+        const serialized = await urls(rule.cssText, sheet.href || document.baseURI);
+        result.push(serialized);
+        if (rule.type === CSSRule.FONT_FACE_RULE) fonts.push(serialized);
       }
       return result.join('\n');
     }
@@ -87,7 +90,7 @@ export async function captureState(page, policy, secrets = []) {
       version: 1, html: scrub(clone.innerHTML), css: scrub(css),
       htmlStyle: scrub((document.documentElement.getAttribute('style') || '') + ';' + rootStyle),
       bodyStyle: scrub(document.body.getAttribute('style') || ''), bodyClass: scrub(document.body.className),
-      diagnostics, assets: assets.size,
+      diagnostics, assets: assets.size, fonts,
     };
   }, { selectors: policy.redactSelectors ?? [], secrets });
 }

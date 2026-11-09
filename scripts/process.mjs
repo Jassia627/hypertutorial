@@ -4,11 +4,21 @@ export function runProcess(command, args, { cwd, env = process.env, timeout = 30
   return new Promise((resolve, reject) => {
     if (signal?.aborted) { reject(new Error('Process cancelled')); return; }
     let child, output = '', reason;
-    const stop = message => { reason ??= message; child?.kill('SIGTERM'); };
+    const stop = message => {
+      reason ??= message;
+      if (!child?.pid) return;
+      if (process.platform === 'win32') {
+        // Kill only our known child tree so inherited pipes cannot keep a cancelled run alive.
+        const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+        killer.on('error', () => child.kill('SIGKILL'));
+      } else {
+        try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); }
+      }
+    };
     const abort = () => stop('Process cancelled');
     const timer = setTimeout(() => stop('Process timeout'), timeout);
     const clean = () => { clearTimeout(timer); signal?.removeEventListener('abort', abort); };
-    try { child = spawn(command, args, { cwd, env, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }); }
+    try { child = spawn(command, args, { cwd, env, shell: false, detached: process.platform !== 'win32', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }); }
     catch (error) { clean(); reject(new Error(`Process launch failed: ${error.code ?? 'unknown'}`)); return; }
     signal?.addEventListener('abort', abort, { once: true });
     for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { output = (output + chunk).slice(-65536); if (echo) process.stdout.write(chunk); });

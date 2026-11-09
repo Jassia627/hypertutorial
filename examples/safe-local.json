@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "title": "Local safe walkthrough",
+  "output": "local-tutorial",
+  "language": "en",
+  "font": "Arial",
+  "app": { "url": "http://127.0.0.1:4123", "start": "/", "width": 1000, "captureHeight": 700, "viewportHeight": 700 },
+  "capturePolicy": {
+    "environment": "isolated",
+    "origins": ["http://127.0.0.1:4123"],
+    "auth": [],
+    "capture": [{ "origin": "http://127.0.0.1:4123", "path": "/", "method": "GET", "operation": "read" }],
+    "storagePrefixes": ["tutorial-draft:"],
+    "redactSelectors": ["[data-pii]"]
+  },
+  "voice": { "provider": "mock" },
+  "states": [{ "name": "start" }, { "name": "simulated", "actions": [{ "toast": "Saved (simulation only)" }] }],
+  "steps": [{ "id": "overview", "state": "start", "kind": "none", "title": "Preview", "narration": "This is a local preview." }, { "id": "result", "state": "simulated", "kind": "none", "title": "Simulation", "narration": "No data was saved." }]
+}

@@ -19,14 +19,24 @@ export function containedPath(root, relative) {
 }
 
 /** Publish complete builds only; roll back a failed directory rename. */
+export function renameWithRetry(source, target, { platform = process.platform, rename = fs.renameSync, wait = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try { rename(source, target); return; }
+    catch (error) {
+      if (platform !== 'win32' || !['EPERM', 'EBUSY', 'EACCES'].includes(error.code) || attempt >= 4) throw error;
+      wait(50 * 2 ** attempt);
+    }
+  }
+}
+
 export function publishDirectory(root, stage, name) {
   const target = containedPath(root, name);
   const source = containedPath(root, path.relative(root, stage));
   const backup = containedPath(root, `.ht-backup-${name}-${Date.now()}`);
   const existed = fs.existsSync(target);
-  if (existed) fs.renameSync(target, backup);
-  try { fs.renameSync(source, target); }
-  catch (error) { if (existed) fs.renameSync(backup, target); throw error; }
+  if (existed) renameWithRetry(target, backup);
+  try { renameWithRetry(source, target); }
+  catch (error) { if (existed) renameWithRetry(backup, target); throw error; }
   // Backups deliberately retained: no recursive deletion of unknown contents.
   return target;
 }

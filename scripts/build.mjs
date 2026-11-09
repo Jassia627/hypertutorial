@@ -5,7 +5,7 @@ import path from 'node:path';
 import { SKILL, loadProject } from './common.mjs';
 import { makeBed, resolveTrack } from './music.mjs';
 import { mountStates } from './style-isolation.mjs';
-import { publishDirectory } from './paths.mjs';
+import { publishDirectory, containedPath } from './paths.mjs';
 
 const { dir, spec } = loadProject(process.argv[2]);
 const OUT = fs.mkdtempSync(path.join(dir, '.ht-build-'));
@@ -48,6 +48,11 @@ const trackId = spec.music?.track ?? spec.music?.style ?? spec.music?.file;
 const music = trackId && trackId !== 'none';
 if (music) {
   const { style, file } = resolveTrack(trackId, dir);
+  if (file) {
+    const relative = path.relative(dir, file);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) containedPath(SKILL, path.relative(SKILL, file));
+    else containedPath(dir, relative);
+  }
   const ducks = [['intro', 0], ...plan.map((p) => [p.id, p.t]), ['outro', outro.t]].filter(([id]) => voice[id]).map(([id, t]) => [t + 0.15, t + 0.15 + dur(id)]);
   makeBed({ style, file, volume: spec.music.volume ?? 0.16, seconds: TOTAL, ducks, out: path.join(OUT, 'audio', 'music.wav') });
 }
@@ -85,6 +90,7 @@ ${emoji}</style>
   .cap { display: flex; align-items: flex-end; justify-content: center; padding-bottom: 46px; pointer-events: none; z-index: 60; }
   .cap div { max-width: 1300px; background: #0f172ae6; color: #fff; font: 600 30px/1.3 '${font}', sans-serif; padding: 14px 30px; border-radius: 16px; text-align: center; }
   .badge { z-index: 61; }
+  .cap div, .badge div { opacity: 0; }
   .badge div { position: absolute; left: 190px; top: 4px; background: ${theme.accent}; color: #fff; font: 700 24px '${font}', sans-serif; padding: 9px 22px; border-radius: 999px; box-shadow: 0 8px 24px #0005; }
   .card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: #fff; z-index: 70; }
   .card .k { font: 700 28px '${font}', sans-serif; color: #86efac; letter-spacing: .08em; text-transform: uppercase; }
@@ -106,8 +112,8 @@ ${used.map((n) => `        <div class="layer" data-state="${n}"${fixedOf(n) ? ` 
     </div>
   </div>
   <div id="intro" class="clip card" data-start="0" data-duration="${intro.d}" data-track-index="2"><div class="in"><div class="k">${esc(spec.intro?.kicker)}</div><h1>${esc(spec.intro?.title ?? spec.title)}</h1><p>${esc(spec.intro?.subtitle)}</p></div></div>
-${plan.map((p) => `  <div class="clip cap" data-start="${p.t}" data-duration="${p.d}" data-track-index="3"><div>${esc(p.narration)}</div></div>
-  <div class="clip badge" data-start="${p.t}" data-duration="${p.d}" data-track-index="4"><div>${p.n} · ${esc(p.title)}</div></div>`).join('\n')}
+${plan.map((p) => `  <div id="caption-${p.id}" class="clip cap" data-start="${p.t}" data-duration="${p.d}" data-track-index="3"><div>${esc(p.narration)}</div></div>
+  <div id="badge-${p.id}" class="clip badge" data-start="${p.t}" data-duration="${p.d}" data-track-index="4"><div>${p.n} · ${esc(p.title)}</div></div>`).join('\n')}
   <div id="outro" class="clip card" data-start="${outro.t}" data-duration="${outro.d}" data-track-index="2"><div class="in"><div class="k">${esc(spec.outro?.kicker)}</div><h1>${esc(spec.outro?.title)}</h1><p>${esc(spec.outro?.subtitle)}</p></div></div>
   ${audio('intro', 0)}
 ${plan.map((p) => '  ' + audio(p.id, p.t)).join('\n')}
@@ -118,7 +124,7 @@ ${plan.map((p) => '  ' + audio(p.id, p.t)).join('\n')}
 <script>
 (${mountStates.toString()})(${scriptJSON(states)});
 const PLAN = ${scriptJSON(plan.map(({ narration, ...p }) => p))};
-const INTRO = ${JSON.stringify(intro)}, OUTRO = ${JSON.stringify(outro)}, STATES = ${JSON.stringify(used)}, FIXED = ${JSON.stringify(used.filter(fixedOf))};
+const INTRO = ${scriptJSON(intro)}, OUTRO = ${scriptJSON(outro)}, STATES = ${scriptJSON(used)}, FIXED = ${scriptJSON(used.filter(fixedOf))};
 const hOf = (n) => (FIXED.includes(n) ? ${VH0} : WH);
 const VW = 1600, VH = 900, WW = ${W}, WH = ${CH}, BASE = VW / WW;
 const world = document.getElementById('world');
@@ -150,7 +156,7 @@ for (const p of PLAN) {
   p.hr = p.highlight ? rect(find(p.state, p.highlight)) : null;
   if (p.after && p.after !== 'all') p.ar = rect(find(p.next, p.after));
   if (p.reveal) p.revealEl = find(p.next, p.reveal);
-  if (p.set) p.setEls = [...layerEl(p.state).querySelectorAll('*')].filter((e) => !e.children.length && window.__htNorm(e.textContent) === p.set.match);
+  if (p.set) p.setEls = [...layerEl(p.state).shadowRoot.querySelectorAll('*')].filter((e) => !e.children.length && window.__htNorm(e.textContent) === p.set.match);
 }
 
 show(PLAN[0].state, 0);
@@ -194,13 +200,14 @@ for (const c of document.querySelectorAll('.cap div, .badge div')) {
 }
 tl.to('#win', { scale: 0.94, opacity: 0, duration: 0.6, ease: 'power2.in' }, OUTRO.t);
 tl.fromTo('#outro .in', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out', immediateRender: false }, OUTRO.t + 0.4);
+window.__timelines ||= {};
 window.__timelines['main'] = tl;
 </script>
 </body>
 </html>
 `;
 fs.writeFileSync(path.join(OUT, 'index.html'), html);
-fs.writeFileSync(path.join(OUT, 'times.json'), JSON.stringify(plan.map((p) => ({ id: p.id, start: p.t, action: +(p.t + p.act).toFixed(2), check: +(p.t + p.act + p.typeDur + 0.7).toFixed(2) })), null, 1));
+fs.writeFileSync(path.join(OUT, 'times.json'), JSON.stringify(plan.map((p) => ({ id: p.id, start: p.t, action: +(p.t + p.act).toFixed(2), check: +Math.min(p.t + p.act + p.typeDur + 0.7, p.t + p.d - 0.4).toFixed(2) })), null, 1));
 publishDirectory(dir, OUT, 'hf');
 const timesTemp = path.join(dir, `.ht-times-${process.pid}.json`);
 fs.copyFileSync(path.join(dir, 'hf/times.json'), timesTemp);
