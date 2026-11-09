@@ -143,6 +143,9 @@ implementation phases are locally qualified; no push, PR or merge.
 
 ## Work-unit rollback boundary
 
+P6 implementation and qualification commit: `9f6fef3`. The five preceding phase
+commits are `2f7f21f`, `5f1ebaa`, `2e8db6e`, `a9bd329` and `80d9cfd` in order.
+
 The feature is local-only. Phase commits form a dependency sequence; revert newest
 first to remove qualification/run/runtime/capture/spec behavior without touching
 the pre-existing untracked `.codegraph/`, `AGENTS.md` or `output/`. No generated
