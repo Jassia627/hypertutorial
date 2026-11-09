@@ -1,134 +1,81 @@
-// Captures each state in hypertutorial.json as static HTML + CSS from the running app.
-// Usage: node capture.mjs <project dir> [stateName]
+// Capture only explicitly authorized test-app operations.
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
+import { chromium } from 'playwright';
 import { SKILL, loadProject, readEnv, interpolate } from './common.mjs';
+import { compilePolicy, checkAction, protectContext } from './capture-policy.mjs';
 
 const { dir, spec } = loadProject(process.argv[2]);
-const require = createRequire(import.meta.url);
+const policy = compilePolicy(spec);
+for (const a of [...(spec.login?.steps ?? []), ...spec.states.flatMap(s => s.actions ?? [])]) checkAction(policy, a);
 const only = process.argv[3];
-const { chromium } = require('playwright');
-const env = readEnv();
-const APP = spec.app.url.replace(/\/+$/, '');
-const W = spec.app.width ?? 1440, H = spec.app.captureHeight ?? 1500;
+if (only && !spec.states.some(s => s.name === only)) throw new Error('Unknown state');
+const env = readEnv(), diagnostics = [];
 const OUT = path.join(dir, 'states');
-const AUTH = path.join(dir, '.auth.json');
-fs.mkdirSync(path.join(OUT, 'fonts'), { recursive: true });
-
-const browser = await chromium.launch();
-const finder = { path: path.join(SKILL, 'scripts/finder.js') };
-
-async function newPage(storageState) {
-  const ctx = await browser.newContext({ viewport: { width: W, height: H }, storageState, locale: spec.app.locale ?? 'es-CO' });
-  await ctx.addInitScript(finder);
-  return [ctx, await ctx.newPage()];
+const W = spec.app.width ?? 1440, H = spec.app.captureHeight ?? 1500;
+let browser, cancelled = false;
+const cancel = () => { cancelled = true; void browser?.close(); };
+process.once('SIGINT', cancel); process.once('SIGTERM', cancel);
+async function newPage(phase, storageState) {
+  const context = await browser.newContext({ viewport: { width: W, height: H }, storageState, locale: spec.app.locale ?? 'en-US', serviceWorkers: 'block' });
+  await protectContext(context, policy, phase, diagnostics);
+  await context.addInitScript({ path: path.join(SKILL, 'scripts/finder.js') });
+  return { context, page: await context.newPage() };
 }
-
 async function handle(page, sel, timeout = 10000) {
-  const end = Date.now() + timeout;
-  for (;;) {
-    try { return (await page.evaluateHandle((s) => window.__htFind(document.body, s), sel)).asElement(); } catch (e) {
-      if (Date.now() > end) throw new Error(`No apareció "${sel}" (${e.message.split('\n')[0]})`);
-      await page.waitForTimeout(250);
-    }
-  }
+  await page.waitForFunction(s => { try { return !!window.__htFind(document.body, s); } catch { return false; } }, sel, { timeout });
+  return (await page.evaluateHandle(s => window.__htFind(document.body, s), sel)).asElement();
 }
-
 async function act(page, a) {
+  if (cancelled) throw new Error('Capture cancelled');
   try {
-    if (a.goto) { await page.goto(APP + a.goto, { waitUntil: 'networkidle' }); await page.waitForTimeout(800); }
-    else if (a.click) { await (await handle(page, a.click, a.optional ? 4000 : 10000)).click(); await page.waitForTimeout(500); }
+    if (a.goto) await page.goto(new URL(a.goto, spec.app.url).href, { waitUntil: 'domcontentloaded' });
+    else if (a.click) await (await handle(page, a.click, a.optional ? 1500 : 10000)).click();
     else if (a.fill) await (await handle(page, a.fill)).fill(interpolate(a.value, env));
     else if (a.press) await page.keyboard.press(a.press);
     else if (a.waitFor) await handle(page, a.waitFor, 20000);
-    else if (a.wait) await page.waitForTimeout(a.wait * 1000);
+    else if (a.wait !== undefined) await page.waitForTimeout(a.wait * 1000);
     else if (a.eval) await page.evaluate(`(async () => { ${a.eval} })()`);
-    else if (a.clearSessionStorage !== undefined) await page.evaluate((p) => Object.keys(sessionStorage).filter((k) => k.startsWith(p)).forEach((k) => sessionStorage.removeItem(k)), a.clearSessionStorage);
-    else throw new Error('Acción desconocida: ' + JSON.stringify(a));
-  } catch (e) { if (!a.optional) throw e; }
+    else if (a.toast) await page.evaluate(text => { const el = document.createElement('div'); el.setAttribute('role', 'status'); el.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#17382d;color:white;padding:20px;z-index:2147483647'; el.textContent = text; document.body.append(el); }, a.toast);
+    else if (a.clearSessionStorage !== undefined) await page.evaluate(p => Object.keys(sessionStorage).filter(k => k.startsWith(p)).forEach(k => sessionStorage.removeItem(k)), a.clearSessionStorage);
+  } catch { if (!a.optional || cancelled) throw new Error(cancelled ? 'Capture cancelled' : 'Capture action failed (details suppressed to protect values)'); }
 }
-
-// Session: reuse .auth.json while it still opens the start page; otherwise log in with spec.login (values from the skill .env).
-async function session() {
-  if (fs.existsSync(AUTH)) {
-    const [ctx, page] = await newPage(AUTH);
-    await page.goto(APP + (spec.app.start ?? '/'), { waitUntil: 'networkidle' });
-    const ok = !spec.login || !new URL(page.url()).pathname.startsWith(spec.login.url);
-    await ctx.close();
-    if (ok) return AUTH;
-  }
-  if (!spec.login) return undefined;
-  console.log('Iniciando sesión…');
-  const [ctx, page] = await newPage();
-  await page.goto(APP + spec.login.url, { waitUntil: 'networkidle' });
-  for (const a of spec.login.steps) await act(page, a);
-  await ctx.storageState({ path: AUTH });
-  await ctx.close();
-  return AUTH;
-}
-
 async function snap(page, name) {
-  await page.waitForTimeout(700);
-  const data = await page.evaluate(async () => {
-    const css = [];
-    for (const ss of document.styleSheets) { try { for (const r of ss.cssRules) css.push(r.cssText); } catch {} }
+  await page.evaluate(async () => { await document.fonts.ready; });
+  const data = await page.evaluate(() => {
+    const css = [...document.styleSheets].flatMap(sheet => { try { return [...sheet.cssRules].map(rule => rule.cssText); } catch { return []; } }).join('\n');
     const clone = document.body.cloneNode(true);
-    const src = document.body.querySelectorAll('input,textarea,select');
-    const dst = clone.querySelectorAll('input,textarea,select');
-    src.forEach((el, i) => {
-      const d = dst[i];
-      if (el.tagName === 'TEXTAREA') d.textContent = el.value;
-      else if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked) d.setAttribute('checked', ''); }
-      else d.setAttribute('value', el.value);
-    });
-    clone.querySelectorAll('script,noscript,iframe').forEach((n) => n.remove());
-    for (const img of clone.querySelectorAll('img')) {
-      try {
-        const b = await (await fetch(img.src)).blob();
-        img.src = await new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); });
-        img.removeAttribute('srcset');
-      } catch {}
-    }
-    return { css: css.join('\n'), html: clone.innerHTML, htmlStyle: document.documentElement.getAttribute('style') || '', bodyClass: document.body.className };
+    clone.querySelectorAll('script,noscript,iframe').forEach(el => el.remove());
+    return { css, html: clone.innerHTML, htmlStyle: document.documentElement.getAttribute('style') ?? '', bodyClass: document.body.className };
   });
-  fs.writeFileSync(path.join(OUT, name + '.json'), JSON.stringify(data));
-  await page.screenshot({ path: path.join(OUT, name + '.png') });
-  console.log('✔', name);
+  fs.writeFileSync(path.join(OUT, `${name}.json`), JSON.stringify(data));
+  await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  console.log('Captured:', name);
 }
-
-const auth = await session();
-const [, page] = await newPage(auth);
-await page.goto(APP + (spec.app.start ?? '/'), { waitUntil: 'networkidle' });
-if (spec.login && new URL(page.url()).pathname.startsWith(spec.login.url)) throw new Error('La sesión no sirve: revisa login en hypertutorial.json y APP_USER/APP_PASSWORD (npm run setup)');
-for (const st of spec.states) {
-  for (const a of st.actions ?? []) await act(page, a);
-  if (!only || only === st.name) await snap(page, st.name);
-}
-
-// Fonts: same-origin @font-face files plus Google Fonts stylesheets, saved locally for the composition.
-const faces = [];
-const ua = await page.evaluate(() => navigator.userAgent);
-const local = await page.evaluate(() => [...document.styleSheets].flatMap((s) => { try { return [...s.cssRules]; } catch { return []; } })
-  .filter((r) => r.type === CSSRule.FONT_FACE_RULE).map((r) => ({ css: r.cssText, base: r.parentStyleSheet.href || location.href })));
-const remote = await page.evaluate(() => [...document.querySelectorAll('link[rel=stylesheet]')].map((l) => l.href).filter((h) => !h.startsWith(location.origin)));
-for (const href of remote) {
+try {
+  browser = await chromium.launch();
+  let storageState;
+  if (spec.login) {
+    const { context, page } = await newPage('auth');
+    try {
+      await page.goto(new URL(spec.login.url, spec.app.url).href, { waitUntil: 'domcontentloaded' });
+      for (const a of spec.login.steps) await act(page, a);
+      storageState = await context.storageState(); // Never persist session tokens.
+    } finally { await context.close(); }
+  }
+  const { context, page } = await newPage('capture', storageState);
   try {
-    const css = await (await fetch(href, { headers: { 'user-agent': ua } })).text();
-    for (const rule of css.match(/@font-face\s*{[^}]*}/g) ?? []) local.push({ css: rule, base: href });
-  } catch {}
+    await page.goto(new URL(spec.app.start ?? '/', spec.app.url).href, { waitUntil: 'domcontentloaded' });
+    fs.mkdirSync(path.join(OUT, 'fonts'), { recursive: true });
+    fs.writeFileSync(path.join(OUT, 'fonts.css'), '');
+    for (const state of spec.states) {
+      for (const a of state.actions ?? []) await act(page, a);
+      if (!only || only === state.name) await snap(page, state.name);
+    }
+    fs.writeFileSync(path.join(OUT, 'diagnostics.json'), JSON.stringify(diagnostics, null, 2));
+  } finally { await context.close(); }
+  if (cancelled) throw new Error('Capture cancelled');
+} finally {
+  await browser?.close();
+  process.removeListener('SIGINT', cancel); process.removeListener('SIGTERM', cancel);
 }
-for (const [i, f] of local.entries()) {
-  const m = f.css.match(/url\("?([^")]+)"?\)/);
-  if (!m || m[1].startsWith('data:')) { if (m) faces.push(f.css); continue; }
-  const url = new URL(m[1], f.base).href;
-  const ext = (url.split('?')[0].match(/\.(woff2?|ttf|otf)$/) ?? [, 'woff2'])[1];
-  try {
-    const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
-    fs.writeFileSync(path.join(OUT, 'fonts', `f${i}.${ext}`), buf);
-    faces.push(f.css.replace(m[0], `url("states/fonts/f${i}.${ext}")`));
-  } catch {}
-}
-fs.writeFileSync(path.join(OUT, 'fonts.css'), faces.join('\n'));
-console.log('fuentes:', faces.length);
-await browser.close();

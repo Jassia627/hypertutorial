@@ -66,4 +66,12 @@ later qualification and independent audit.
 
 ## Next step
 
+P1 commit: `2f7f21f`. P2 implemented exact per-phase request authorization,
+context-wide routing, blocked service workers/websockets/WebRTC, ephemeral auth,
+trusted-eval opt-in, declarative toast, prefix-constrained storage and finally
+cleanup. RED: policy tests failed missing module. GREEN: `npm.cmd test` 5 pass,
+1 sandbox junction skip. Local server network proof follows in P6; P2 not yet
+qualified against browser integration. Migration documents GET side effects and
+isolation as primary protection. RDD remains off.
+
 Implement P1 on the feature branch, then proceed in order and record phase outcomes, commands, limitations and commit identities below. Do not mark a phase complete merely because files exist.
