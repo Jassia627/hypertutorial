@@ -92,4 +92,12 @@ WAVs, validates duration/hash, atomically updates cache and supports cancellatio
 Provider error bodies are suppressed. RED: process tests missing module; GREEN:
 `npm.cmd test` 8 pass and 1 sandbox junction skip. Render qualification pending.
 
+P4 commit: `a9bd329`. Host-permission `npm.cmd test` also passed 9/9 including
+junction containment. P5 adds dry-run/resume with v1 atomic manifests, canonical
+input hashes, verified output hashes, tool/installed-dependency fingerprints,
+phase dependencies and explicit failed-capture replay/paid-call consent flags.
+Auth secrets are excluded rather than hashed; reusable auth requires nonsecret
+authRevision. RED: run tests missing module. GREEN: `npm.cmd test` 10 pass,
+1 sandbox junction skip. Full dry-run/resume fixture execution follows in P6.
+
 Implement P1 on the feature branch, then proceed in order and record phase outcomes, commands, limitations and commit identities below. Do not mark a phase complete merely because files exist.

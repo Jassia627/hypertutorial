@@ -44,3 +44,29 @@ including images. Screenshots come from the redacted inert export, not the live
 app. Binary image content cannot be automatically recognized as PII. Exported
 handlers/scripts/active embeds are removed; CSP denies app API access and form
 submission. Review redacted exports before distributing any tutorial.
+
+## Resumable runs
+
+`node scripts/run.mjs <project> --dry-run` validates and prints the phase plan
+without launching a browser/provider or writing any output. `--resume` verifies
+each recorded output's SHA-256 before reuse. Spec, tool, dependency, Node and
+configuration fingerprints invalidate affected phases and their dependents.
+The v1 manifest contains hashes and relative output locators, not credentials.
+Authentication values are excluded, never hashed. Credential-sensitive captures
+need a manually changed, nonsecret `capturePolicy.authRevision` to be reusable;
+otherwise explicitly use `--refresh-capture` to replay from the beginning.
+Update that revision when credentials/account identity or trusted eval changes.
+Do not put secrets in specs, narration, URLs, provider options or revision names.
+
+Capture cannot resume halfway through browser actions. A failed or invalidated
+capture blocks resume until `--refresh-capture` explicitly authorizes replay.
+Voice keeps its per-line verified WAV cache. Non-mock narration always needs
+`--allow-paid` when calls may run; failed requests are not automatically retried.
+Other safe phases can run again. `--render [--draft]` includes video generation;
+without it the run ends after lint and snapshots. Cancellation/failure never
+records a complete phase. Manifests are replaced atomically. Run one process per
+project at a time; concurrent writers are unsupported.
+
+Builds use project-local staging and retain `.ht-backup-hf-*` directories after
+successful replacement. Failed staging and retained backups can be inspected and
+removed manually; the CLI does not recursively delete unknown directories.
