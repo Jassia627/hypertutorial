@@ -78,19 +78,26 @@ export async function captureState(page, policy, secrets = []) {
     clone.querySelectorAll('script,style,noscript,iframe,object,embed,video,audio,link,base,meta,canvas').forEach(el => el.remove());
     for (const el of clone.querySelectorAll('*')) {
       for (const a of [...el.attributes]) {
-        if (/^on/i.test(a.name) || a.name.startsWith('data-') || ['action', 'formaction', 'ping', 'srcdoc', 'nonce', 'integrity'].includes(a.name)) el.removeAttribute(a.name);
+        if (/^on/i.test(a.name) || /password|token|secret|credential|authorization|api[-_]?key/i.test(a.name) || ['action', 'formaction', 'ping', 'srcdoc', 'nonce', 'integrity'].includes(a.name)) el.removeAttribute(a.name);
       }
       if (el.hasAttribute('style')) el.setAttribute('style', await urls(el.getAttribute('style'), document.baseURI));
       if (el.tagName === 'IMG') { el.setAttribute('src', await asset(el.currentSrc || el.src, document.baseURI)); el.removeAttribute('srcset'); }
       for (const attr of ['href', 'xlink:href']) if (el.hasAttribute(attr) && !el.getAttribute(attr).startsWith('#')) el.removeAttribute(attr);
       if (el.tagName !== 'IMG' && el.hasAttribute('src')) el.removeAttribute('src');
     }
+    // DOM values are decoded here. Scrubbing serialized markup misses entities
+    // and can corrupt tag names when a credential happens to match HTML syntax.
+    const text = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    while (text.nextNode()) text.currentNode.nodeValue = scrub(text.currentNode.nodeValue);
+    for (const el of [clone, ...clone.querySelectorAll('*')]) {
+      for (const a of [...el.attributes]) el.setAttribute(a.name, scrub(a.value));
+    }
     const rootStyle = [...getComputedStyle(document.documentElement)].filter(k => k.startsWith('--')).map(k => `${k}:${getComputedStyle(document.documentElement).getPropertyValue(k)}`).join(';');
     return {
-      version: 1, html: scrub(clone.innerHTML), css: scrub(css),
+      version: 1, html: clone.innerHTML, css: scrub(css),
       htmlStyle: scrub((document.documentElement.getAttribute('style') || '') + ';' + rootStyle),
       bodyStyle: scrub(document.body.getAttribute('style') || ''), bodyClass: scrub(document.body.className),
-      diagnostics, assets: assets.size, fonts,
+      diagnostics, assets: assets.size, fonts: fonts.map(scrub),
     };
   }, { selectors: policy.redactSelectors ?? [], secrets });
 }

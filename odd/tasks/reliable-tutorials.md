@@ -28,7 +28,7 @@ Implement the six approved improvement phases for the existing local hypertutori
 
 - [x] P1 — Validate and normalize a versioned spec before side effects; add a standalone validation command, path containment and legacy compatibility tests.
 - [x] P2 — Enforce explicit application policies, separate authentication, constrain scripts/storage, safely cancel and redact policy diagnostics.
-- [ ] P3 — Reopened by independent verification: fix entity-aware secret redaction and preserve styling data attributes; other capture fidelity work is retained.
+- [x] P3 — Fix entity-aware secret redaction and preserve inert styling data attributes; C2/C3 regressions and existing fidelity tests pass.
 - [x] P4 — Handle subprocess launch errors, exit codes, signals and output validation correctly; retain last successful outputs and bounded GPU fallback.
 - [x] P5 — Retain replay-consent evidence across repeated failed resumes, verified by the C1 regression; existing orchestrator work is retained.
 - [ ] P6 — Reopened for regression coverage and independent re-verification of the three findings; earlier qualification evidence is retained below.
@@ -163,8 +163,8 @@ the retained output/staging directories as part of rollback.
 ## Independent verification corrections (required before final delivery)
 
 - [x] C1: Preserve capture replay consent across repeated failed `--resume` attempts. Prior phase records now survive every earlier phase save; two refusals send zero new requests, explicit refresh replays, unchanged resume reuses, and failed-capture history also survives a later spec change.
-- [ ] C2: Redact known secrets in decoded DOM text and attribute values before serialization; HTML entity encoding currently bypasses raw-string replacement.
-- [ ] C3: Preserve inert `data-*` attributes needed by framework CSS while removing/redacting sensitive values.
+- [x] C2: Redact known secrets in decoded DOM text and attribute values before serialization, retaining browser escaping and markup structure. Tests cover ampersands, angle brackets, both quote types, text, title/ARIA/form attributes and a credential matching an HTML tag name.
+- [x] C3: Preserve inert `data-state`, `data-side` and other styling attributes while removing sensitive named attributes and redacting known values. Attribute-selector computed foreground/background styles now survive alongside redaction and event-handler removal.
 - [ ] C4: Add deterministic regressions, rerun all checks, independently re-verify and update final evidence.
 
 Independent baseline checks: 14 unit, 2 integration, 1 visual passed and local mock smoke rendered a validated 9.1-second MP4. Those tests did not cover the three regressions above; prior completion claims are provisional until these corrections pass.
@@ -176,6 +176,37 @@ zero network replay, explicit refresh, unchanged reuse and failed capture.
 Route: delegated direct, bounded correction writer. Rollback scope: manifest
 initialization in `scripts/run.mjs` and its pipeline regression; unrelated phase
 implementations remain unchanged. Independent correction verification is pending.
+
+C1 commit: `6032833`. C2/C3 RED: `node --test tests/capture.integration.mjs`
+passed the existing test and failed both new regressions (encoded secrets remained
+visible; `data-state` was absent). GREEN: the same host-permission command passed
+3/3 after decoded-DOM redaction and targeted attribute removal. A final rerun
+after robust artifact-directory creation also passed 3/3. The screenshot
+`tests/artifacts/redaction-yuA7yc/redacted.png` contains redaction placeholders;
+the earlier equivalent screenshot `redaction-b5LIf2/redacted.png` was visually
+inspected. Route: delegated direct, same bounded writer. Rollback scope:
+`scripts/capture-state.mjs` and its two capture regression tests; no unrelated
+capture, process or rendering logic changed. Writer qualification is not an
+independent approval; C4 and P6 remain pending parent-owned re-verification.
+
+Correction writer final checks (host permissions; local fixtures and mock voice):
+- `npm.cmd test`: 14 passed, 0 failed, 0 skipped.
+- `npm.cmd run test:integration`: 5 passed, 0 failed, 0 skipped, including C1-C3.
+- `npm.cmd run test:visual`: 1 passed, 0 failed, 0 skipped. Both frames in
+  `tests/artifacts/visual-47VeM2` were visually inspected; captions and badges
+  remain legible and fixture redactions are retained.
+- `npm.cmd run smoke`: exit 0. `tests/artifacts/smoke-JRj8XX` contains the
+  validated 9.1-second, 1.2 MB draft MP4 (68.9-second render), two snapshots and
+  verified unchanged resume/corrupted-capture refusal. Lint: 0 errors, 7 existing
+  warnings. Three optional system fonts failed and HyperFrames forcibly closed
+  timed-out browser shutdowns; the final video still validated successfully.
+- Final capture-only rerun after artifact-directory hardening: 3/3 passed.
+- `git diff --check`: passed. No installs, external app captures, paid calls,
+  remote operations or changes to the baseline untracked directories occurred.
+
+The bounded source corrections and their deterministic regressions are complete.
+Next step: parent spot check plus fresh independent correction verification;
+then complete C4/P6 and synchronize the full Engram mirror. RDD remains off.
 
 ## Documented platform and fidelity limitations
 
