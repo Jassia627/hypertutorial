@@ -2,6 +2,13 @@
 
 A complete working example is `examples/dosis-compras.json`.
 
+Run `node scripts/validate.mjs <project>` before capture. Specs use `version: 1`;
+omitted versions are normalized in memory only. Unknown versions, unsafe output
+names, invalid actions, missing state references and escaping/symlink output paths
+are rejected by every consuming command. Validation needs no captured states,
+voice files, browser, provider key or installed dependencies. The editor schema is
+`references/hypertutorial.schema.json`; semantic validation is authoritative.
+
 ## Top level
 
 | field | meaning |

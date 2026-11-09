@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { normalizeSpec, validateProjectPaths } from './spec.mjs';
 
 export const SKILL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const ENV_FILE = path.join(SKILL, '.env');
@@ -11,15 +12,16 @@ export function loadProject(dirArg) {
   const dir = path.resolve(dirArg);
   const file = path.join(dir, 'hypertutorial.json');
   if (!fs.existsSync(file)) throw new Error('No existe ' + file);
-  if (!fs.existsSync(path.join(SKILL, 'node_modules'))) throw new Error(`Faltan dependencias: corre "npm install" en ${SKILL}`);
-  return { dir, spec: JSON.parse(fs.readFileSync(file, 'utf8')) };
+  const spec = normalizeSpec(JSON.parse(fs.readFileSync(file, 'utf8')));
+  validateProjectPaths(dir, spec);
+  return { dir, spec };
 }
 
 /** KEY=value pairs from the skill's .env, overridden by real environment variables. */
 export function readEnv() {
-  const file = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+  const file = process.env.HT_NO_ENV === '1' ? '' : fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
   const env = Object.fromEntries(file.split(/\r?\n/).map((l) => l.match(/^\s*([A-Z0-9_]+)\s*=\s*"?(.*?)"?\s*$/)).filter(Boolean).map((m) => [m[1], m[2]]));
-  for (const k of Object.keys(process.env)) if (/^(APP_|SPEKO_|ELEVENLABS_|OPENAI_|HT_)/.test(k)) env[k] = process.env[k];
+  for (const k of Object.keys(process.env)) if (/^(APP_|SPEKO_|ELEVENLABS_|OPENAI_|HT_)/.test(k) && (process.env.HT_NO_ENV !== '1' || k.startsWith('HT_'))) env[k] = process.env[k];
   return env;
 }
 

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hypertutorial.local/spec/v1",
+  "title": "Hypertutorial v1 (semantic constraints enforced by scripts/spec.mjs)",
+  "type": "object",
+  "required": ["title", "app", "states", "steps"],
+  "properties": {
+    "version": { "const": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "output": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}$" },
+    "app": { "type": "object", "required": ["url"], "properties": { "url": { "type": "string", "format": "uri" }, "width": { "type": "integer", "minimum": 100, "maximum": 10000 }, "captureHeight": { "type": "integer", "minimum": 100, "maximum": 10000 } } },
+    "states": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["name"] } },
+    "steps": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "state", "kind"] } },
+    "capturePolicy": { "type": "object" }
+  }
+}
